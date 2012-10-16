@@ -6,15 +6,15 @@
 :- dynamic miser_sort_observation/2.
 
 % macro creates these to list implementation choices
-:- dynamic miser_sort_choices/1.
-miser_sort_choices([tiny_sort,permutation_sort,merge_sort,quick_sort]).
+:- dynamic implementation_choices/2.
+implementation_choices(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
 
 
 % macro creates this to perform runtime measurements.
 % once found, the body is replaced with a caller to the winner
 :- dynamic miser_sort/2.
 miser_sort(Xs, Sorted) :-
-    miser_sort_choices(Choices),
+    implementation_choices(miser_sort/2, Choices),
     random_member(Chosen, Choices),
     format('chose ~s~n', [Chosen]),
     Goal =.. [Chosen, Xs, Sorted],
@@ -37,13 +37,13 @@ miser_sort_trim_choices :-
     findall(Cost-Name, miser_sort_aggregate(Name, Cost), Costs),
     keysort(Costs, AscendingCost),
     reverse(AscendingCost, [_-MostCostly|_]),
-    miser_sort_choices(Choices),
+    implementation_choices(miser_sort/2,Choices),
     once(select(MostCostly, Choices, Keepers)),
-    retractall(miser_sort_choices(_)),
+    retractall(implementation_choices(miser_sort/2,_)),
     (   Keepers=[]       ->  miser_sort_found_winner(MostCostly)
     ;   Keepers=[Winner] ->  miser_sort_found_winner(Winner)
     ;   format('discarding ~s~n', [MostCostly]),
-        assertz(miser_sort_choices(Keepers)),
+        assertz(implementation_choices(miser_sort/2, Keepers)),
         retractall(miser_sort_observation(MostCostly,_))
     ).
 
@@ -61,7 +61,7 @@ miser_sort_found_winner(Winner) :-
     assertz(miser_sort(Xs, Sorted) :- Sort),
     erase(OldClause),
     compile_predicates([miser_sort/2]),
-    retractall(miser_sort_choices(_)),
+    retractall(implementation_choices(miser_sort/2, _)),
     retractall(miser_sort_observation(_,_)).
 
 
@@ -77,7 +77,7 @@ measure_cost(Goal, Cost) :-
 % ------ several sort implementations are below here -------
 
 verify :-
-    miser_sort_choices(Sorters),
+    implementation_choices(miser_sort, Sorters),
     forall(member(Sorter, Sorters), verify(Sorter)).
 
 verify(Sorter) :-
