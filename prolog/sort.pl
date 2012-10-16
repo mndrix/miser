@@ -2,8 +2,8 @@
 
 :- use_module(library(random)).
 
-% macro creates this to store runtime observations
-:- dynamic miser_sort_observation/2.
+% each clause is an observation of runtime cost for a miserly predicate
+:- dynamic observation/3.
 
 % macro creates these to list implementation choices
 :- dynamic implementation_choices/2.
@@ -20,7 +20,7 @@ miser_sort(Xs, Sorted) :-
     Goal =.. [Chosen, Xs, Sorted],
     measure_cost(Goal, Cost),
     format('  cost ~D~n', [Cost]),
-    assertz(miser_sort_observation(Chosen, Cost)),
+    assertz(observation(miser_sort/2, Chosen, Cost)),
     miser_sort_observation_count(ObservationCount),
     (   ObservationCount > 5
     ->  miser_sort_trim_choices
@@ -29,7 +29,7 @@ miser_sort(Xs, Sorted) :-
 
 % macro creates this to count observations that have happened so far
 miser_sort_observation_count(Count) :-
-    findall(Name, miser_sort_observation(Name, _), Names),
+    findall(Name, observation(miser_sort/2, Name, _), Names),
     length(Names, Count).
 
 % macro creates this to discard losing implementations
@@ -44,13 +44,13 @@ miser_sort_trim_choices :-
     ;   Keepers=[Winner] ->  miser_sort_found_winner(Winner)
     ;   format('discarding ~s~n', [MostCostly]),
         assertz(implementation_choices(miser_sort/2, Keepers)),
-        retractall(miser_sort_observation(MostCostly,_))
+        retractall(observation(miser_sort/2, MostCostly,_))
     ).
 
 % macro creates this to aggregate observation results
 miser_sort_aggregate(Name, AvgCost) :-
-    aggregate(count, Name, Cost^miser_sort_observation(Name, Cost), Count),
-    aggregate(sum(Cost), miser_sort_observation(Name, Cost), TotalCost),
+    aggregate(count, Name, Cost^observation(miser_sort/2, Name, Cost), Count),
+    aggregate(sum(Cost), observation(miser_sort/2, Name, Cost), TotalCost),
     AvgCost is TotalCost / Count.
 
 % macro creates this for making the winner permanent
@@ -62,7 +62,7 @@ miser_sort_found_winner(Winner) :-
     erase(OldClause),
     compile_predicates([miser_sort/2]),
     retractall(implementation_choices(miser_sort/2, _)),
-    retractall(miser_sort_observation(_,_)).
+    retractall(observation(miser_sort/2,_,_)).
 
 
 % measures the cost of calling a goal (by some reasonable metric)
