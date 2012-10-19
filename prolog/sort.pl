@@ -14,18 +14,44 @@ implementation_choices(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quic
 % once found, the body is replaced with a caller to the winner
 :- dynamic miser_sort/2.
 miser_sort(Xs, Sorted) :-
-    implementation_choices(miser_sort/2, Choices),
-    random_member(Chosen, Choices),
-    format('chose ~s~n', [Chosen]),
-    Goal =.. [Chosen, Xs, Sorted],
-    measure_cost(Goal, Cost),
-    format('  cost ~D~n', [Cost]),
-    assertz(observation(miser_sort/2, Chosen, Cost)),
+    measure_one(miser_sort/2, [Xs, Sorted]),
+
+    % trim implementation choices if we have enough data to do so
     miser_sort_observation_count(ObservationCount),
     (   ObservationCount > 5
     ->  miser_sort_trim_choices
     ;   true % nothing to do yet
     ).
+
+% measure a single, working implementation and record results
+% in the database. removes failing implementations if any are encountered
+measure_one(Predicate, Arguments) :-
+    random_implementation(Predicate, Chosen), % infinite choice points
+        format('chose ~s~n', [Chosen]),
+        (   measure_cost(Chosen, Arguments, Cost)
+        ->  true
+        ;   remove_implementation_choice(Predicate, Chosen, _),
+            fail
+        ),
+    !,
+    observe(Predicate, Chosen, Cost),
+    format('  cost ~D~n', [Cost]).
+
+% randomly choose an implementation for Predicate, providing
+% infinite choice points choosing randomly again on each backtrack
+random_implementation(Predicate, Chosen) :-
+    repeat,
+    implementation_choices(Predicate, Choices),
+    ( Choices=[] -> throw('No implementations to choose from') ; true),
+    random_member(Chosen, Choices).
+
+% record results of measuring an implementation's performance
+observe(Predicate, Implementation, Cost) :-
+    assertz(observation(Predicate, Implementation, Cost)).
+
+% remove cost measurement results (opposite of observe/3)
+forget(Predicate, Implementation) :-
+    retractall(observation(Predicate, Implementation,_)).
 
 % macro creates this to count observations that have happened so far
 miser_sort_observation_count(Count) :-
@@ -34,18 +60,32 @@ miser_sort_observation_count(Count) :-
 
 % macro creates this to discard losing implementations
 miser_sort_trim_choices :-
-    findall(Cost-Name, miser_sort_aggregate(Name, Cost), Costs),
-    keysort(Costs, AscendingCost),
-    reverse(AscendingCost, [_-MostCostly|_]),
-    implementation_choices(miser_sort/2,Choices),
-    once(select(MostCostly, Choices, Keepers)),
-    retractall(implementation_choices(miser_sort/2,_)),
+    % find the most costly implementation we've seen
+    most_costly_implementation(miser_sort/2, MostCostly),
+
+    % ... remove it from available choices
+    remove_implementation_choice(miser_sort/2, MostCostly, Keepers),
+
     (   Keepers=[]       ->  miser_sort_found_winner(MostCostly)
     ;   Keepers=[Winner] ->  miser_sort_found_winner(Winner)
     ;   format('discarding ~s~n', [MostCostly]),
-        assertz(implementation_choices(miser_sort/2, Keepers)),
-        retractall(observation(miser_sort/2, MostCostly,_))
+        forget(miser_sort/2, MostCostly)
     ).
+
+% true if MostCostly is the implementation with highest measured
+% cost in our observations so far
+most_costly_implementation(_Predicate, MostCostly) :-
+    findall(Cost-Name, miser_sort_aggregate(Name, Cost), Costs),
+    keysort(Costs, AscendingCost),
+    reverse(AscendingCost, [_-MostCostly|_]).
+
+% remove a single implementation from the list of choices
+remove_implementation_choice(Predicate, Needle, Leftover) :-
+    implementation_choices(Predicate, Choices),
+    once(select(Needle, Choices, Leftover)),
+    retractall(implementation_choices(miser_sort/2,_)),
+    assertz(implementation_choices(miser_sort/2, Leftover)).
+
 
 % macro creates this to aggregate observation results
 miser_sort_aggregate(Name, AvgCost) :-
@@ -66,7 +106,8 @@ miser_sort_found_winner(Winner) :-
 
 
 % measures the cost of calling a goal (by some reasonable metric)
-measure_cost(Goal, Cost) :-
+measure_cost(Implementation, Arguments, Cost) :-
+    Goal =.. [Implementation|Arguments],
     statistics(inferences, Before),
     call(Goal),
     statistics(inferences, After),
@@ -77,7 +118,7 @@ measure_cost(Goal, Cost) :-
 % ------ several sort implementations are below here -------
 
 verify :-
-    implementation_choices(miser_sort, Sorters),
+    implementation_choices(miser_sort/2, Sorters),
     forall(member(Sorter, Sorters), verify(Sorter)).
 
 verify(Sorter) :-
