@@ -30,7 +30,7 @@ measure_one(Predicate, Arguments) :-
         format('chose ~s~n', [Chosen]),
         (   measure_cost(Chosen, Arguments, Cost)
         ->  true
-        ;   remove_implementation_choice(Predicate, Chosen, _),
+        ;   remove_implementation(Predicate, Chosen, _),
             fail
         ),
     !,
@@ -64,7 +64,7 @@ miser_sort_trim_choices :-
     most_costly_implementation(miser_sort/2, MostCostly),
 
     % ... remove it from available choices
-    remove_implementation_choice(miser_sort/2, MostCostly, Keepers),
+    remove_implementation(miser_sort/2, MostCostly, Keepers),
 
     (   Keepers=[]       ->  miser_sort_found_winner(MostCostly)
     ;   Keepers=[Winner] ->  miser_sort_found_winner(Winner)
@@ -80,7 +80,7 @@ most_costly_implementation(_Predicate, MostCostly) :-
     reverse(AscendingCost, [_-MostCostly|_]).
 
 % remove a single implementation from the list of choices
-remove_implementation_choice(Predicate, Needle, Leftover) :-
+remove_implementation(Predicate, Needle, Leftover) :-
     implementations(Predicate, Choices),
     once(select(Needle, Choices, Leftover)),
     retractall(implementations(miser_sort/2,_)),
