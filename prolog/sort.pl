@@ -5,18 +5,30 @@
 % each clause is an observation of runtime cost for a miserly predicate
 :- dynamic observation/3.
 
-% macro creates these to list implementation choices
+% implementations(Predicate, Implementations)
+%
+% True if Predicate has a list of Implementations
 :- dynamic implementations/2.
-implementations(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
 
 
-% macro creates this to perform runtime measurements.
-% once found, the body is replaced with a caller to the winner
-:- dynamic miser_sort/2.
-miser_sort(Xs, Sorted) :-
-    Predicate = miser_sort/2,
-    measure_one(Predicate, [Xs, Sorted]),
-    trim_implementations(Predicate).
+% miserly(PredicateIndicator, Implementations)
+%
+% Creates a predicate (name and arity determined by
+% PredicateIndicator) which self-optimizes by choosing the fastest
+% implementation from among Implementations.
+miserly(Predicate, Implementations) :-
+    (dynamic Predicate),
+    assertz(implementations(Predicate, Implementations)),
+    Functor/Arity = Predicate,
+    length(Args, Arity),
+    Head =.. [Functor|Args],
+    Body = ( measure_one(Predicate, Args),
+             trim_implementations(Predicate)
+           ),
+    assertz(Head :- Body).
+
+
+:- miserly(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
 
 % measure a single, working implementation and record results
 % in the database. removes failing implementations if any are encountered
