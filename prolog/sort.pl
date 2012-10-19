@@ -34,7 +34,7 @@ miserly(Predicate, Implementations) :-
 % in the database. removes failing implementations if any are encountered
 measure_one(Predicate, Arguments) :-
     random_implementation(Predicate, Chosen), % infinite choice points
-        format('chose ~s~n', [Chosen]),
+        format('chose ~p~n', [Chosen]),
         (   measure_cost(Chosen, Arguments, Cost)
         ->  true
         ;   remove_implementation(Predicate, Chosen, _),
@@ -79,7 +79,7 @@ trim_implementations(Predicate) :-
 
     (   Keepers=[]       ->  found_winner(Predicate, MostCostly)
     ;   Keepers=[Winner] ->  found_winner(Predicate, Winner)
-    ;   format('discarding ~s~n', [MostCostly]),
+    ;   format('discarding ~p~n', [MostCostly]),
         forget(Predicate, MostCostly)
     ).
 trim_implementations(_).
@@ -108,7 +108,7 @@ implementation_cost(Pred, Name, AvgCost) :-
 
 % macro creates this for making the winner permanent
 found_winner(Predicate, Winner) :-
-    format('found a winner: ~s~n', [Winner]),
+    format('found a winner: ~p~n', [Winner]),
 
     % prepare to erase the old definition
     Functor/Arity = Predicate,
@@ -145,7 +145,7 @@ verify :-
     forall(member(Sorter, Sorters), verify(Sorter)).
 
 verify(Sorter) :-
-    format('Verifying ~s ... ', [Sorter]),
+    format('Verifying ~p ... ', [Sorter]),
     flush_output,
     forall(between(1,100, _), verify_work(Sorter)),
     format('done~n').
