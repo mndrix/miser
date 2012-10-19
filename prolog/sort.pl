@@ -14,14 +14,9 @@ implementations(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]
 % once found, the body is replaced with a caller to the winner
 :- dynamic miser_sort/2.
 miser_sort(Xs, Sorted) :-
-    measure_one(miser_sort/2, [Xs, Sorted]),
-
-    % trim implementation choices if we have enough data to do so
-    miser_sort_observation_count(ObservationCount),
-    (   ObservationCount > 5
-    ->  miser_sort_trim_choices
-    ;   true % nothing to do yet
-    ).
+    Predicate = miser_sort/2,
+    measure_one(Predicate, [Xs, Sorted]),
+    trim_implementations(Predicate).
 
 % measure a single, working implementation and record results
 % in the database. removes failing implementations if any are encountered
@@ -54,23 +49,28 @@ forget(Predicate, Implementation) :-
     retractall(observation(Predicate, Implementation,_)).
 
 % macro creates this to count observations that have happened so far
-miser_sort_observation_count(Count) :-
-    findall(Name, observation(miser_sort/2, Name, _), Names),
+observation_count(Predicate, Count) :-
+    findall(Name, observation(Predicate, Name, _), Names),
     length(Names, Count).
 
 % macro creates this to discard losing implementations
-miser_sort_trim_choices :-
+trim_implementations(Predicate) :-
+    observation_count(Predicate, ObservationCount),
+    ObservationCount > 5,
+    !,
+
     % find the most costly implementation we've seen
-    most_costly_implementation(miser_sort/2, MostCostly),
+    most_costly_implementation(Predicate, MostCostly),
 
     % ... remove it from available choices
-    remove_implementation(miser_sort/2, MostCostly, Keepers),
+    remove_implementation(Predicate, MostCostly, Keepers),
 
-    (   Keepers=[]       ->  miser_sort_found_winner(MostCostly)
-    ;   Keepers=[Winner] ->  miser_sort_found_winner(Winner)
+    (   Keepers=[]       ->  found_winner(Predicate, MostCostly)
+    ;   Keepers=[Winner] ->  found_winner(Predicate, Winner)
     ;   format('discarding ~s~n', [MostCostly]),
-        forget(miser_sort/2, MostCostly)
+        forget(Predicate, MostCostly)
     ).
+trim_implementations(_).
 
 % true if MostCostly is the implementation with highest measured
 % cost in our observations so far
@@ -83,8 +83,8 @@ most_costly_implementation(Predicate, MostCostly) :-
 remove_implementation(Predicate, Needle, Leftover) :-
     implementations(Predicate, Choices),
     once(select(Needle, Choices, Leftover)),
-    retractall(implementations(miser_sort/2,_)),
-    assertz(implementations(miser_sort/2, Leftover)).
+    retractall(implementations(Predicate,_)),
+    assertz(implementations(Predicate, Leftover)).
 
 
 % true if Predicate has an implementation Name whose average observed
@@ -95,15 +95,25 @@ implementation_cost(Pred, Name, AvgCost) :-
     AvgCost is TotalCost / Count.
 
 % macro creates this for making the winner permanent
-miser_sort_found_winner(Winner) :-
+found_winner(Predicate, Winner) :-
     format('found a winner: ~s~n', [Winner]),
-    clause(miser_sort(_,_), _, OldClause),
-    Sort =.. [Winner, Xs, Sorted],
-    assertz(miser_sort(Xs, Sorted) :- Sort),
+
+    % prepare to erase the old definition
+    Functor/Arity = Predicate,
+    functor(Term, Functor, Arity),
+    clause(Term, _, OldClause),  % should be exactly one OldClause
+
+    % make Functor an alias for Winner (same arity)
+    length(Args, Arity),
+    Head =.. [Functor|Args],
+    Body =.. [Winner|Args],
+    assertz(Head :- Body),
+
+    % erase the old definition and clean up
     erase(OldClause),
-    compile_predicates([miser_sort/2]),
-    retractall(implementations(miser_sort/2, _)),
-    retractall(observation(miser_sort/2,_,_)).
+    compile_predicates([Predicate]),
+    retractall(implementations(Predicate, _)),
+    retractall(observation(Predicate,_,_)).
 
 
 % measures the cost of calling a goal (by some reasonable metric)
