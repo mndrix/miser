@@ -74,8 +74,8 @@ miser_sort_trim_choices :-
 
 % true if MostCostly is the implementation with highest measured
 % cost in our observations so far
-most_costly_implementation(_Predicate, MostCostly) :-
-    findall(Cost-Name, miser_sort_aggregate(Name, Cost), Costs),
+most_costly_implementation(Predicate, MostCostly) :-
+    findall(Cost-Name, implementation_cost(Predicate, Name, Cost), Costs),
     keysort(Costs, AscendingCost),
     reverse(AscendingCost, [_-MostCostly|_]).
 
@@ -87,10 +87,11 @@ remove_implementation(Predicate, Needle, Leftover) :-
     assertz(implementations(miser_sort/2, Leftover)).
 
 
-% macro creates this to aggregate observation results
-miser_sort_aggregate(Name, AvgCost) :-
-    aggregate(count, Name, Cost^observation(miser_sort/2, Name, Cost), Count),
-    aggregate(sum(Cost), observation(miser_sort/2, Name, Cost), TotalCost),
+% true if Predicate has an implementation Name whose average observed
+% cost is AvgCost
+implementation_cost(Pred, Name, AvgCost) :-
+    aggregate(count, Pred^Cost^observation(Pred, Name, Cost), Count),
+    aggregate(sum(Cost), Pred^observation(Pred, Name, Cost), TotalCost),
     AvgCost is TotalCost / Count.
 
 % macro creates this for making the winner permanent
