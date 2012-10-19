@@ -6,8 +6,8 @@
 :- dynamic observation/3.
 
 % macro creates these to list implementation choices
-:- dynamic implementation_choices/2.
-implementation_choices(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
+:- dynamic implementations/2.
+implementations(miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
 
 
 % macro creates this to perform runtime measurements.
@@ -41,7 +41,7 @@ measure_one(Predicate, Arguments) :-
 % infinite choice points choosing randomly again on each backtrack
 random_implementation(Predicate, Chosen) :-
     repeat,
-    implementation_choices(Predicate, Choices),
+    implementations(Predicate, Choices),
     ( Choices=[] -> throw('No implementations to choose from') ; true),
     random_member(Chosen, Choices).
 
@@ -81,10 +81,10 @@ most_costly_implementation(_Predicate, MostCostly) :-
 
 % remove a single implementation from the list of choices
 remove_implementation_choice(Predicate, Needle, Leftover) :-
-    implementation_choices(Predicate, Choices),
+    implementations(Predicate, Choices),
     once(select(Needle, Choices, Leftover)),
-    retractall(implementation_choices(miser_sort/2,_)),
-    assertz(implementation_choices(miser_sort/2, Leftover)).
+    retractall(implementations(miser_sort/2,_)),
+    assertz(implementations(miser_sort/2, Leftover)).
 
 
 % macro creates this to aggregate observation results
@@ -101,7 +101,7 @@ miser_sort_found_winner(Winner) :-
     assertz(miser_sort(Xs, Sorted) :- Sort),
     erase(OldClause),
     compile_predicates([miser_sort/2]),
-    retractall(implementation_choices(miser_sort/2, _)),
+    retractall(implementations(miser_sort/2, _)),
     retractall(observation(miser_sort/2,_,_)).
 
 
@@ -118,7 +118,7 @@ measure_cost(Implementation, Arguments, Cost) :-
 % ------ several sort implementations are below here -------
 
 verify :-
-    implementation_choices(miser_sort/2, Sorters),
+    implementations(miser_sort/2, Sorters),
     forall(member(Sorter, Sorters), verify(Sorter)).
 
 verify(Sorter) :-
