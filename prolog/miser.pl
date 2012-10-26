@@ -18,7 +18,7 @@
 % Creates a predicate (name and arity determined by
 % PredicateIndicator) which self-optimizes by choosing the fastest
 % implementation from among Implementations.
-%:- meta_predicate miserly(0,+).
+:- meta_predicate miserly(0,+).
 miserly(Predicate, Implementations) :-
     Module:Functor/Arity = Predicate,
     (dynamic Predicate),
