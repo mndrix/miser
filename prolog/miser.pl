@@ -1,6 +1,5 @@
 :- module(miser, [miserly/2]).
 
-% TODO debug the new sort module
 % TODO script that calls miser_sort/2 from multiple predicates
 
 :- use_module(library(random)).
@@ -23,13 +22,16 @@
 miserly(Predicate, Implementations) :-
     Module:Functor/Arity = Predicate,
     (dynamic Predicate),
-    assertz(implementations(Predicate, Implementations)),
+    maplist(qualify(Module), Implementations, Qualified),
+    assertz(implementations(Predicate, Qualified)),
     length(Args, Arity),
     Head =.. [Functor|Args],
     Body = ( miser:measure_one(Predicate, Args),
              miser:trim_implementations(Predicate)
            ),
     Module:assertz(Head :- Body).
+
+qualify(Module, Predicate, Module:Predicate).
 
 
 % measure a single, working implementation and record results
@@ -119,9 +121,9 @@ found_winner(Predicate, Winner) :-
 
     % make Functor an alias for Winner (same arity)
     length(Args, Arity),
-    Head =.. [Functor|Args],
-    Body =.. [Winner|Args],
-    assertz(Module:Head :- Body),
+    quniv(Head, Functor, Args),
+    quniv(Body, Winner, Args),
+    Module:assertz(Head :- Body),
 
     % erase the old definition and clean up
     erase(OldClause),
@@ -129,10 +131,17 @@ found_winner(Predicate, Winner) :-
     retractall(implementations(Predicate, _)),
     retractall(observation(Predicate,_,_)).
 
+% like =../2 (aka "univ") but allows module-qualified functors
+quniv(Module:Term, Module:Functor, Args) :-
+    Term =.. [Functor|Args],
+    !.
+quniv(Term, Functor, Args) :-
+    Term =.. [Functor|Args].
+
 
 % measures the cost of calling a goal (by some reasonable metric)
 measure_cost(Implementation, Arguments, Cost) :-
-    Goal =.. [Implementation|Arguments],
+    quniv(Goal, Implementation, Arguments),
     statistics(inferences, Before),
     call(Goal),
     statistics(inferences, After),

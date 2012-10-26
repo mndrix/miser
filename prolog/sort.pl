@@ -1,7 +1,7 @@
-%:- module(sort, []).
+:- module(miser_sort, []).
 :- use_module(miser).
 
-:- miserly(user:miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
+:- miserly(miser_sort:miser_sort/2, [tiny_sort,permutation_sort,merge_sort,quick_sort]).
 
 verify :-
     Sorters = [tiny_sort,permutation_sort,merge_sort,quick_sort],
