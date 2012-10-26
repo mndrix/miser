@@ -20,6 +20,10 @@
 % implementation from among Implementations.
 :- meta_predicate miserly(0,+).
 miserly(Predicate, Implementations) :-
+    generate_optimizing_predicate(Predicate, Implementations).
+
+:- meta_predicate generate_optimizing_predicate(0,+).
+generate_optimizing_predicate(Predicate, Implementations) :-
     Module:Functor/Arity = Predicate,
     (dynamic Predicate),
     maplist(qualify(Module), Implementations, Qualified),
