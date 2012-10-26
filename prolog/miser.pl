@@ -21,15 +21,15 @@
 % implementation from among Implementations.
 %:- meta_predicate miserly(0,+).
 miserly(Predicate, Implementations) :-
+    Module:Functor/Arity = Predicate,
     (dynamic Predicate),
     assertz(implementations(Predicate, Implementations)),
-    Functor/Arity = Predicate,
     length(Args, Arity),
     Head =.. [Functor|Args],
-    Body = ( measure_one(Predicate, Args),
-             trim_implementations(Predicate)
+    Body = ( miser:measure_one(Predicate, Args),
+             miser:trim_implementations(Predicate)
            ),
-    assertz(Head :- Body).
+    Module:assertz(Head :- Body).
 
 
 % measure a single, working implementation and record results
@@ -113,15 +113,15 @@ found_winner(Predicate, Winner) :-
     format('found a winner: ~p~n', [Winner]),
 
     % prepare to erase the old definition
-    Functor/Arity = Predicate,
+    Module:Functor/Arity = Predicate,
     functor(Term, Functor, Arity),
-    clause(Term, _, OldClause),  % should be exactly one OldClause
+    clause(Module:Term, _, OldClause),  % should be exactly one OldClause
 
     % make Functor an alias for Winner (same arity)
     length(Args, Arity),
     Head =.. [Functor|Args],
     Body =.. [Winner|Args],
-    assertz(Head :- Body),
+    assertz(Module:Head :- Body),
 
     % erase the old definition and clean up
     erase(OldClause),
