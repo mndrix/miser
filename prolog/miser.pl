@@ -54,7 +54,7 @@ qualify(Module, Predicate, Module:Predicate).
 % in the database. removes failing implementations if any are encountered
 measure_one(Predicate, Arguments) :-
     random_implementation(Predicate, Chosen), % infinite choice points
-        format('chose ~p~n', [Chosen]),
+        print_message(informational, miser(chose, Chosen)),
         (   measure_cost(Chosen, Arguments, Cost)
         ->  true
         ;   remove_implementation(Predicate, Chosen, _),
@@ -62,7 +62,7 @@ measure_one(Predicate, Arguments) :-
         ),
     !,
     observe(Predicate, Chosen, Cost),
-    format('  cost ~D~n', [Cost]).
+    print_message(informational, miser(cost, Cost)).
 
 % randomly choose an implementation for Predicate, providing
 % infinite choice points choosing randomly again on each backtrack
@@ -99,7 +99,7 @@ trim_implementations(Predicate) :-
 
     (   Keepers=[]       ->  found_winner(Predicate, MostCostly)
     ;   Keepers=[Winner] ->  found_winner(Predicate, Winner)
-    ;   format('discarding ~p~n', [MostCostly]),
+    ;   print_message(informational, miser(discard, MostCostly)),
         forget(Predicate, MostCostly)
     ).
 trim_implementations(_).
@@ -128,7 +128,7 @@ implementation_cost(Pred, Name, AvgCost) :-
 
 % macro creates this for making the winner permanent
 found_winner(Predicate, Winner) :-
-    format('found a winner: ~p~n', [Winner]),
+    print_message(informational, miser(winner, Winner)),
 
     % prepare to erase the old definition
     Module:Functor/Arity = Predicate,
@@ -162,3 +162,11 @@ measure_cost(Implementation, Arguments, Cost) :-
     call(Goal),
     statistics(inferences, After),
     Cost is After - Before.
+
+
+% define how to show this library's messages
+:- multifile prolog:message//1.
+prolog:message(miser(chose, Chosen)) --> ['chose ~p'-[Chosen]].
+prolog:message(miser(cost, Cost)) --> ['cost ~p'-[Cost]].
+prolog:message(miser(discard, Loser)) --> ['discarding ~p'-[Loser]].
+prolog:message(miser(winner, Winner)) --> ['found a winner ~p'-[Winner]].
