@@ -1,7 +1,5 @@
 :- module(miser, [miserly/2]).
 
-% TODO script that calls miser_sort/2 from multiple predicates
-
 :- use_module(library(random)).
 
 % each clause is an observation of runtime cost for a miserly predicate
