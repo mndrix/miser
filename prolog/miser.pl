@@ -20,14 +20,26 @@
 % implementation from among Implementations.
 :- meta_predicate miserly(0,+).
 miserly(Predicate, Implementations) :-
-    generate_optimizing_predicate(Predicate, Implementations).
+    Module:Name/Arity = Predicate,
+    functor(Term0, Name, Arity),
+    format(atom(Base), 'miserly_~w_', [Name/Arity]),
+    assertz((
+        user:goal_expansion(Term0, Module:Term) :-
+            gensym(Base, Sym),
+            rename_term(Term0, Sym, Term),
+            generate_optimizing_predicate(Module:Sym/Arity, Implementations)
+    )).
+
+rename_term(Term0, NewName, Term) :-
+    Term0 =.. [_|Args],
+    Term  =.. [NewName|Args].
 
 :- meta_predicate generate_optimizing_predicate(0,+).
 generate_optimizing_predicate(Predicate, Implementations) :-
     Module:Functor/Arity = Predicate,
     (dynamic Predicate),
     maplist(qualify(Module), Implementations, Qualified),
-    assertz(implementations(Predicate, Qualified)),
+    assertz(miser:implementations(Predicate, Qualified)),
     length(Args, Arity),
     Head =.. [Functor|Args],
     Body = ( miser:measure_one(Predicate, Args),
@@ -101,7 +113,7 @@ most_costly_implementation(Predicate, MostCostly) :-
 
 % remove a single implementation from the list of choices
 remove_implementation(Predicate, Needle, Leftover) :-
-    implementations(Predicate, Choices),
+    once(implementations(Predicate, Choices)),
     once(select(Needle, Choices, Leftover)),
     retractall(implementations(Predicate,_)),
     assertz(implementations(Predicate, Leftover)).
