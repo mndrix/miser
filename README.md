@@ -8,16 +8,17 @@ Let's say you want to sort a list.  Should you use merge sort, quick sort,
 counting sort or maybe a hand-coded sort that's optimized for tiny lists?
 The best choice depends on CPU cache architectures, compiler optimizations,
 runtime data characteristics, etc.  It can be very difficult to know, a priori,
-which algorithm is "best".  Even if you choose correctly today, the best
+which algorithm is best.  Even if you choose correctly today, the best
 choice is likely to change as your software evolves over time.
 
-Self-optimizing predicates solve this problem by choosing the best available
-algorithm at runtime based on live performance metrics.  During a warm up
-period, `miser` randomly chooses algorithms while timing their performance.
-After enough performance data is collected, it permanently swaps the best
-algorithm into place.  It does this separately for each predicate call site.
+Self-optimizing predicates solve this problem by choosing the best
+available algorithm at runtime based on live performance measurements.  The
+`miser` library randomly chooses among available implementations while
+measuring their runtime characteristics.  Once `miser` is confident it's
+found the best algorithm, it permanently swaps it into place so there's no
+ongoing overhead.  It does this separately for each predicate call site.
 
-Here's a sketch of a `best_sort/2` predicate using `miser`:
+Here's a sketch of a list sorting predicate with `miser`:
 
 ```prolog
 :- module(best_sort, []).
@@ -33,7 +34,7 @@ quick_sort(List, Sorted) :-
 
 
 % Implementations can specialize by restricting themselves to certain
-% inputs.  Only those implementations that work will be considered.
+% inputs.  Only applicable implementations will be considered.
 
 tiny_sort(List, Sorted) :-
     length(List, Len),
@@ -45,7 +46,7 @@ counting_sort(List, Sorted) :-
     % a counting sort implementation goes here
 ```
 
-A program can use this new module like this:
+A program uses the new predicate like this:
 
 ```prolog
 :- use_module(best_sort).
@@ -57,7 +58,7 @@ long_list(Sorted) :-
     best_sort([45,93,35,23,20,52,12,77,56,25,12], Sorted).
 ```
 
-`short_list/2` and `long_list/2` will use different sort
+`short_list/1` and `long_list/1` will use different sort
 algorithms, depending on runtime performance characteristics.
 
 
